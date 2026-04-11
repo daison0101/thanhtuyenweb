@@ -109,7 +109,6 @@ def show():
         email = st.text_input("Email")
         phone = st.text_input("Điện thoại")
 
-        # 🔥 CHỌN USER
         if users.empty:
             st.warning("Chưa có tài khoản user!")
             return
@@ -147,7 +146,6 @@ def show():
 
             user_id = int(user_map[selected_user])
 
-            # 🚨 CHECK: user đã được gán chưa
             existing = df[df["user_id"] == user_id]
 
             if not existing.empty:
@@ -155,7 +153,6 @@ def show():
                 return
 
             with engine.connect() as conn:
-
                 conn.execute(
                     employees_table.insert().values(
                         ho_ten=name,
@@ -167,24 +164,20 @@ def show():
                         user_id=user_id
                     )
                 )
-
                 conn.commit()
 
             get_employees.clear()
-
             st.success("✅ Đã thêm nhân viên")
-
             st.rerun()
 
     st.divider()
 
-    # ================= CẬP NHẬT NHÂN VIÊN =================
+    # ================= CẬP NHẬT =================
     if not df.empty:
 
         st.subheader("✏️ Cập nhật nhân viên")
 
         emp_id = int(st.selectbox("Chọn nhân viên cần sửa", df["id"]))
-
         emp = df[df["id"] == emp_id].iloc[0]
 
         new_name = st.text_input("Họ tên", value=emp["ho_ten"])
@@ -198,16 +191,10 @@ def show():
 
         if st.button("Cập nhật nhân viên"):
 
-            dep_id = int(
-                departments[departments["ten_phong"] == dep]["id"].values[0]
-            )
-
-            pos_id = int(
-                positions[positions["ten_chuc_vu"] == pos]["id"].values[0]
-            )
+            dep_id = int(departments[departments["ten_phong"] == dep]["id"].values[0])
+            pos_id = int(positions[positions["ten_chuc_vu"] == pos]["id"].values[0])
 
             with engine.connect() as conn:
-
                 conn.execute(
                     employees_table.update()
                     .where(employees_table.c.id == emp_id)
@@ -220,37 +207,52 @@ def show():
                         ngay_vao_lam=new_date
                     )
                 )
-
                 conn.commit()
 
             get_employees.clear()
-
             st.success("✅ Cập nhật thành công")
-
             st.rerun()
 
     st.divider()
 
-    # ================= XÓA NHÂN VIÊN =================
+    # ================= XÓA (CÓ POPUP) =================
     if role == "admin" and not df.empty:
 
         st.subheader("🗑 Xóa nhân viên")
 
         emp_delete = int(st.selectbox("Chọn nhân viên cần xóa", df["id"]))
 
+        # init state
+        if "confirm_delete" not in st.session_state:
+            st.session_state.confirm_delete = False
+
+        # bấm nút xóa
         if st.button("Xóa nhân viên"):
+            st.session_state.confirm_delete = True
 
-            with engine.connect() as conn:
+        # ===== POPUP XÁC NHẬN =====
+        if st.session_state.confirm_delete:
 
-                conn.execute(
-                    employees_table.delete()
-                    .where(employees_table.c.id == emp_delete)
-                )
+            st.warning("⚠️ Bạn có chắc chắn muốn xóa nhân viên này không?")
 
-                conn.commit()
+            col1, col2 = st.columns(2)
 
-            get_employees.clear()
+            with col1:
+                if st.button("✅ Xác nhận xóa"):
+                    with engine.connect() as conn:
+                        conn.execute(
+                            employees_table.delete()
+                            .where(employees_table.c.id == emp_delete)
+                        )
+                        conn.commit()
 
-            st.success("✅ Đã xóa nhân viên")
+                    get_employees.clear()
+                    st.session_state.confirm_delete = False
 
-            st.rerun()
+                    st.success("✅ Đã xóa nhân viên")
+                    st.rerun()
+
+            with col2:
+                if st.button("❌ Hủy"):
+                    st.session_state.confirm_delete = False
+                    st.info("Đã hủy thao tác xóa")
