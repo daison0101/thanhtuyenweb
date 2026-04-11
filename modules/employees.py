@@ -34,10 +34,50 @@ def show():
     positions = get_positions()
     users = load_users()
 
-    # ================= HIỂN THỊ BẢNG =================
+    # ================= 🔎 SEARCH =================
+    st.markdown("### 🔎 Tìm kiếm nhân viên")
 
-    if not df.empty:
-        df_show = df.copy()
+    col1, col2, col3 = st.columns(3)
+
+    name_filter = col1.text_input("Tên nhân viên")
+
+    dep_options = ["Tất cả"]
+    if not departments.empty:
+        dep_options += departments["ten_phong"].tolist()
+
+    dep_filter = col2.selectbox("Phòng ban", dep_options)
+
+    pos_options = ["Tất cả"]
+    if not positions.empty:
+        pos_options += positions["ten_chuc_vu"].tolist()
+
+    pos_filter = col3.selectbox("Chức vụ", pos_options)
+
+    # ================= FILTER LOGIC =================
+    filtered_df = df.copy()
+
+    if name_filter:
+        filtered_df = filtered_df[
+            filtered_df["ho_ten"].str.contains(name_filter, case=False, na=False)
+        ]
+
+    if dep_filter != "Tất cả":
+        filtered_df = filtered_df[
+            filtered_df["ten_phong"] == dep_filter
+        ]
+
+    if pos_filter != "Tất cả":
+        filtered_df = filtered_df[
+            filtered_df["ten_chuc_vu"] == pos_filter
+        ]
+
+    st.divider()
+
+    # ================= HIỂN THỊ BẢNG =================
+    st.markdown("### 📋 Danh sách nhân viên")
+
+    if not filtered_df.empty:
+        df_show = filtered_df.copy()
         df_show = df_show.rename(columns={
             "ho_ten": "Họ tên",
             "email": "Email",
@@ -53,13 +93,14 @@ def show():
 
         st.dataframe(df_show, use_container_width=True)
 
+        st.success(f"Tìm thấy {len(filtered_df)} nhân viên")
+
     else:
-        st.info("Chưa có nhân viên")
+        st.warning("Không tìm thấy nhân viên phù hợp")
 
     st.divider()
 
     # ================= THÊM NHÂN VIÊN =================
-
     st.subheader("➕ Thêm nhân viên")
 
     with st.form("add_emp"):
@@ -123,7 +164,7 @@ def show():
                         department_id=dep_id,
                         position_id=pos_id,
                         ngay_vao_lam=str(date),
-                        user_id=user_id  # ✅ QUAN TRỌNG
+                        user_id=user_id
                     )
                 )
 
@@ -138,7 +179,6 @@ def show():
     st.divider()
 
     # ================= CẬP NHẬT NHÂN VIÊN =================
-
     if not df.empty:
 
         st.subheader("✏️ Cập nhật nhân viên")
@@ -192,7 +232,6 @@ def show():
     st.divider()
 
     # ================= XÓA NHÂN VIÊN =================
-
     if role == "admin" and not df.empty:
 
         st.subheader("🗑 Xóa nhân viên")
