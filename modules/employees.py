@@ -29,6 +29,12 @@ def show():
 
     st.subheader("👨‍💼 Quản lý nhân viên")
 
+    # ✅ HIỂN THỊ SAU KHI XÓA (CÓ TÊN)
+    if "deleted_success" in st.session_state and st.session_state.deleted_success:
+        deleted_name = st.session_state.get("deleted_name", "")
+        st.success(f"✅ Đã xóa nhân viên: {deleted_name}")
+        st.session_state.deleted_success = False
+
     df = get_employees()
     departments = get_departments()
     positions = get_positions()
@@ -53,7 +59,7 @@ def show():
 
     pos_filter = col3.selectbox("Chức vụ", pos_options)
 
-    # ================= FILTER LOGIC =================
+    # ================= FILTER =================
     filtered_df = df.copy()
 
     if name_filter:
@@ -73,7 +79,7 @@ def show():
 
     st.divider()
 
-    # ================= HIỂN THỊ BẢNG =================
+    # ================= TABLE =================
     st.markdown("### 📋 Danh sách nhân viên")
 
     if not filtered_df.empty:
@@ -92,15 +98,13 @@ def show():
         ]
 
         st.dataframe(df_show, use_container_width=True)
-
         st.success(f"Tìm thấy {len(filtered_df)} nhân viên")
-
     else:
         st.warning("Không tìm thấy nhân viên phù hợp")
 
     st.divider()
 
-    # ================= THÊM NHÂN VIÊN =================
+    # ================= ADD =================
     st.subheader("➕ Thêm nhân viên")
 
     with st.form("add_emp"):
@@ -172,7 +176,7 @@ def show():
 
     st.divider()
 
-    # ================= CẬP NHẬT =================
+    # ================= UPDATE =================
     if not df.empty:
 
         st.subheader("✏️ Cập nhật nhân viên")
@@ -215,28 +219,33 @@ def show():
 
     st.divider()
 
-    # ================= XÓA (CÓ POPUP) =================
+    # ================= DELETE =================
     if role == "admin" and not df.empty:
 
         st.subheader("🗑 Xóa nhân viên")
 
         emp_delete = int(st.selectbox("Chọn nhân viên cần xóa", df["id"]))
+        emp_name = df[df["id"] == emp_delete]["ho_ten"].values[0]
 
-        # init state
+        # INIT STATE
         if "confirm_delete" not in st.session_state:
             st.session_state.confirm_delete = False
 
-        # bấm nút xóa
+        if "deleted_name" not in st.session_state:
+            st.session_state.deleted_name = ""
+
+        # CLICK XÓA
         if st.button("Xóa nhân viên"):
             st.session_state.confirm_delete = True
 
-        # ===== POPUP XÁC NHẬN =====
+        # POPUP
         if st.session_state.confirm_delete:
 
-            st.warning("⚠️ Bạn có chắc chắn muốn xóa nhân viên này không?")
+            st.warning(f"⚠️ Bạn có chắc chắn muốn xóa: **{emp_name}** không?")
 
             col1, col2 = st.columns(2)
 
+            # XÁC NHẬN
             with col1:
                 if st.button("✅ Xác nhận xóa"):
                     with engine.connect() as conn:
@@ -247,11 +256,14 @@ def show():
                         conn.commit()
 
                     get_employees.clear()
-                    st.session_state.confirm_delete = False
 
-                    st.success("✅ Đã xóa nhân viên")
+                    st.session_state.confirm_delete = False
+                    st.session_state.deleted_success = True
+                    st.session_state.deleted_name = emp_name  # 🔥 LƯU TÊN
+
                     st.rerun()
 
+            # HỦY
             with col2:
                 if st.button("❌ Hủy"):
                     st.session_state.confirm_delete = False
