@@ -29,10 +29,9 @@ def show():
 
     st.subheader("👨‍💼 Quản lý nhân viên")
 
-    # ✅ HIỂN THỊ SAU KHI XÓA (CÓ TÊN)
+    # ✅ THÔNG BÁO SAU KHI XÓA
     if "deleted_success" in st.session_state and st.session_state.deleted_success:
-        deleted_name = st.session_state.get("deleted_name", "")
-        st.success(f"✅ Đã xóa nhân viên: {deleted_name}")
+        st.success("✅ Đã xóa nhân viên")
         st.session_state.deleted_success = False
 
     df = get_employees()
@@ -227,25 +226,18 @@ def show():
         emp_delete = int(st.selectbox("Chọn nhân viên cần xóa", df["id"]))
         emp_name = df[df["id"] == emp_delete]["ho_ten"].values[0]
 
-        # INIT STATE
         if "confirm_delete" not in st.session_state:
             st.session_state.confirm_delete = False
 
-        if "deleted_name" not in st.session_state:
-            st.session_state.deleted_name = ""
-
-        # CLICK XÓA
         if st.button("Xóa nhân viên"):
             st.session_state.confirm_delete = True
 
-        # POPUP
         if st.session_state.confirm_delete:
 
             st.warning(f"⚠️ Bạn có chắc chắn muốn xóa: **{emp_name}** không?")
 
             col1, col2 = st.columns(2)
 
-            # XÁC NHẬN
             with col1:
                 if st.button("✅ Xác nhận xóa"):
                     with engine.connect() as conn:
@@ -256,14 +248,10 @@ def show():
                         conn.commit()
 
                     get_employees.clear()
-
                     st.session_state.confirm_delete = False
                     st.session_state.deleted_success = True
-                    st.session_state.deleted_name = emp_name  # 🔥 LƯU TÊN
-
                     st.rerun()
 
-            # HỦY
             with col2:
                 if st.button("❌ Hủy"):
                     st.session_state.confirm_delete = False
