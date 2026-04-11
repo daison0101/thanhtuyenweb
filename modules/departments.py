@@ -5,7 +5,6 @@ from database import engine, departments_table
 
 
 # ================= LOAD DATA =================
-
 def load_departments():
     with engine.connect() as conn:
         query = sa.select(departments_table)
@@ -14,7 +13,6 @@ def load_departments():
 
 
 # ================= PAGE =================
-
 def show():
 
     # ================= PHÂN QUYỀN =================
@@ -26,17 +24,20 @@ def show():
 
     st.subheader("🏢 Quản lý phòng ban")
 
+    # ✅ THÔNG BÁO SAU KHI XÓA
+    if "deleted_dep_success" in st.session_state and st.session_state.deleted_dep_success:
+        name = st.session_state.get("deleted_dep_name", "")
+        st.success(f"✅ Đã xóa phòng ban: {name}")
+        st.session_state.deleted_dep_success = False
+
     df = load_departments()
 
     # ================= HIỂN THỊ DANH SÁCH =================
-
     st.markdown("### 📋 Danh sách phòng ban")
 
     if df.empty:
         st.info("Chưa có phòng ban nào")
-
     else:
-
         df_show = df.rename(columns={
             "id": "ID",
             "ten_phong": "Tên phòng ban",
@@ -51,8 +52,7 @@ def show():
 
     st.divider()
 
-    # ================= THÊM PHÒNG BAN =================
-
+    # ================= THÊM =================
     st.markdown("### ➕ Thêm phòng ban")
 
     with st.form("add_department"):
@@ -69,14 +69,12 @@ def show():
                 return
 
             with engine.connect() as conn:
-
                 conn.execute(
                     departments_table.insert().values(
                         ten_phong=name,
                         mo_ta=desc
                     )
                 )
-
                 conn.commit()
 
             st.success("Thêm phòng ban thành công")
@@ -84,36 +82,21 @@ def show():
 
     st.divider()
 
-    # ================= CẬP NHẬT PHÒNG BAN =================
-
+    # ================= UPDATE =================
     st.markdown("### ✏️ Cập nhật phòng ban")
 
     if df.empty:
-
         st.info("Không có dữ liệu để chỉnh sửa")
-
     else:
-
         dep_map = dict(zip(df["ten_phong"], df["id"]))
 
-        selected_dep = st.selectbox(
-            "Chọn phòng ban",
-            list(dep_map.keys())
-        )
-
+        selected_dep = st.selectbox("Chọn phòng ban", list(dep_map.keys()))
         dep_id = dep_map[selected_dep]
 
         selected = df[df["id"] == dep_id].iloc[0]
 
-        new_name = st.text_input(
-            "Tên phòng ban mới",
-            value=selected["ten_phong"]
-        )
-
-        new_desc = st.text_area(
-            "Mô tả mới",
-            value=selected["mo_ta"]
-        )
+        new_name = st.text_input("Tên phòng ban mới", value=selected["ten_phong"])
+        new_desc = st.text_area("Mô tả mới", value=selected["mo_ta"])
 
         if st.button("Cập nhật phòng ban"):
 
@@ -122,7 +105,6 @@ def show():
                 return
 
             with engine.connect() as conn:
-
                 conn.execute(
                     departments_table.update()
                     .where(departments_table.c.id == dep_id)
@@ -131,7 +113,6 @@ def show():
                         mo_ta=new_desc
                     )
                 )
-
                 conn.commit()
 
             st.success("Cập nhật thành công")
@@ -139,37 +120,61 @@ def show():
 
     st.divider()
 
-    # ================= XÓA PHÒNG BAN =================
-
-    # ❌ CHỈ ADMIN MỚI ĐƯỢC XÓA
+    # ================= DELETE =================
     if role == "admin":
 
         st.markdown("### 🗑 Xóa phòng ban")
 
         if df.empty:
             st.info("Không có phòng ban để xóa")
-
         else:
 
-            dep_map = dict(zip(df["ten_phong"], df["id"]))
+            # 👉 HIỂN THỊ ID - TÊN
+            dep_options = df.apply(
+                lambda x: f"{x['id']} - {x['ten_phong']}", axis=1
+            ).tolist()
 
-            delete_dep = st.selectbox(
-                "Chọn phòng ban cần xóa",
-                list(dep_map.keys())
-            )
+            selected = st.selectbox("Chọn phòng ban cần xóa", dep_options)
 
-            delete_id = dep_map[delete_dep]
+            dep_id = int(selected.split(" - ")[0])
+            dep_name = selected.split(" - ")[1]
 
+            # INIT STATE
+            if "confirm_delete_dep" not in st.session_state:
+                st.session_state.confirm_delete_dep = False
+
+            if "deleted_dep_name" not in st.session_state:
+                st.session_state.deleted_dep_name = ""
+
+            # CLICK XÓA
             if st.button("Xóa phòng ban"):
+                st.session_state.confirm_delete_dep = True
 
-                with engine.connect() as conn:
+            # POPUP
+            if st.session_state.confirm_delete_dep:
 
-                    conn.execute(
-                        departments_table.delete()
-                        .where(departments_table.c.id == delete_id)
-                    )
+                st.warning(f"⚠️ Bạn có chắc chắn muốn xóa:\n\nID: {dep_id} - {dep_name} ?")
 
-                    conn.commit()
+                col1, col2 = st.columns(2)
 
-                st.success("Đã xóa phòng ban")
-                st.rerun()
+                # XÁC NHẬN
+                with col1:
+                    if st.button("✅ Xác nhận xóa"):
+                        with engine.connect() as conn:
+                            conn.execute(
+                                departments_table.delete()
+                                .where(departments_table.c.id == dep_id)
+                            )
+                            conn.commit()
+
+                        st.session_state.confirm_delete_dep = False
+                        st.session_state.deleted_dep_success = True
+                        st.session_state.deleted_dep_name = f"{dep_id} - {dep_name}"
+
+                        st.rerun()
+
+                # HỦY
+                with col2:
+                    if st.button("❌ Hủy"):
+                        st.session_state.confirm_delete_dep = False
+                        st.info("Đã hủy thao tác xóa")
