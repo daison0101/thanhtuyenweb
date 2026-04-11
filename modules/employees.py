@@ -31,7 +31,8 @@ def show():
 
     # ✅ THÔNG BÁO SAU KHI XÓA
     if "deleted_success" in st.session_state and st.session_state.deleted_success:
-        st.success("✅ Đã xóa nhân viên")
+        name = st.session_state.get("deleted_name", "")
+        st.success(f"✅ Đã xóa nhân viên: {name}")
         st.session_state.deleted_success = False
 
     df = get_employees()
@@ -119,15 +120,8 @@ def show():
         user_map = dict(zip(users["username"], users["id"]))
         selected_user = st.selectbox("Tài khoản (user)", list(user_map.keys()))
 
-        dep = st.selectbox(
-            "Phòng ban",
-            departments["ten_phong"] if not departments.empty else []
-        )
-
-        pos = st.selectbox(
-            "Chức vụ",
-            positions["ten_chuc_vu"] if not positions.empty else []
-        )
+        dep = st.selectbox("Phòng ban", departments["ten_phong"])
+        pos = st.selectbox("Chức vụ", positions["ten_chuc_vu"])
 
         date = st.date_input("Ngày vào làm")
 
@@ -139,14 +133,8 @@ def show():
                 st.warning("Vui lòng nhập tên")
                 return
 
-            dep_id = int(
-                departments[departments["ten_phong"] == dep]["id"].values[0]
-            )
-
-            pos_id = int(
-                positions[positions["ten_chuc_vu"] == pos]["id"].values[0]
-            )
-
+            dep_id = int(departments[departments["ten_phong"] == dep]["id"].values[0])
+            pos_id = int(positions[positions["ten_chuc_vu"] == pos]["id"].values[0])
             user_id = int(user_map[selected_user])
 
             existing = df[df["user_id"] == user_id]
@@ -223,21 +211,33 @@ def show():
 
         st.subheader("🗑 Xóa nhân viên")
 
-        emp_delete = int(st.selectbox("Chọn nhân viên cần xóa", df["id"]))
-        emp_name = df[df["id"] == emp_delete]["ho_ten"].values[0]
+        # 👉 TẠO LIST HIỂN THỊ ID - TÊN
+        emp_options = df.apply(lambda x: f"{x['id']} - {x['ho_ten']}", axis=1).tolist()
+
+        selected = st.selectbox("Chọn nhân viên cần xóa", emp_options)
+
+        # 👉 TÁCH ID
+        emp_delete = int(selected.split(" - ")[0])
+        emp_name = selected.split(" - ")[1]
 
         if "confirm_delete" not in st.session_state:
             st.session_state.confirm_delete = False
 
+        if "deleted_name" not in st.session_state:
+            st.session_state.deleted_name = ""
+
+        # CLICK XÓA
         if st.button("Xóa nhân viên"):
             st.session_state.confirm_delete = True
 
+        # POPUP
         if st.session_state.confirm_delete:
 
-            st.warning(f"⚠️ Bạn có chắc chắn muốn xóa: **{emp_name}** không?")
+            st.warning(f"⚠️ Bạn có chắc chắn muốn xóa nhân viên:\n\nID: {emp_delete} - {emp_name} ?")
 
             col1, col2 = st.columns(2)
 
+            # XÁC NHẬN
             with col1:
                 if st.button("✅ Xác nhận xóa"):
                     with engine.connect() as conn:
@@ -248,10 +248,14 @@ def show():
                         conn.commit()
 
                     get_employees.clear()
+
                     st.session_state.confirm_delete = False
                     st.session_state.deleted_success = True
+                    st.session_state.deleted_name = f"{emp_delete} - {emp_name}"
+
                     st.rerun()
 
+            # HỦY
             with col2:
                 if st.button("❌ Hủy"):
                     st.session_state.confirm_delete = False
