@@ -14,7 +14,6 @@ from modules import (
     positions,
     attendance,
     statistics,
-    search,
     ai_chat,
     ai_cv,
     ai_analysis
@@ -113,7 +112,6 @@ if role == "admin":
         "🏢 Quản lý phòng ban",
         "📌 Quản lý chức vụ",
         "🕒 Chấm công",
-        "🔎 Tìm kiếm nhân viên",
         "📊 Thống kê",
         "🤖 AI Chatbot HR",
         "📄 AI Sàng lọc CV",
@@ -125,7 +123,6 @@ elif role == "hr":
     menu_options += [
         "📋 Quản lý nhân viên",
         "🕒 Chấm công",
-        "🔎 Tìm kiếm nhân viên",
         "📊 Thống kê",
         "🤖 AI Chatbot HR"
     ]
@@ -133,8 +130,7 @@ elif role == "hr":
 # ===== USER =====
 else:
     menu_options += [
-        "🕒 Chấm công",   # ✅ THÊM DÒNG NÀY
-        "🔎 Tìm kiếm nhân viên",
+        "🕒 Chấm công",
         "🤖 AI Chatbot HR"
     ]
 
@@ -156,9 +152,6 @@ elif menu == "📌 Quản lý chức vụ":
 
 elif menu == "🕒 Chấm công":
     attendance.show()
-
-elif menu == "🔎 Tìm kiếm nhân viên":
-    search.show()
 
 elif menu == "📊 Thống kê":
     statistics.show()
